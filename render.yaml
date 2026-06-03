@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: docmod-api
+    runtime: docker
+    rootDir: backend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: FRONTEND_URL
+        value: https://docmod.vercel.app
