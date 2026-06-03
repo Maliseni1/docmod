@@ -1,16 +1,32 @@
 import { ImageConverter } from './ImageConverter.js';
 import { PdfConverter } from './PdfConverter.js';
 import { DocumentConverter } from './DocumentConverter.js';
+import { PandocConverter } from './PandocConverter.js';
+import { LibreOfficeConverter } from './LibreOfficeConverter.js';
 
 /**
  * GRASP: Creator + Indirection
- * Centralized object creation. Routes don't "new" converters directly.
+ * Dynamically registers converters based on available system binaries.
  */
-const REGISTRY = [
-  ImageConverter,
-  PdfConverter,
-  DocumentConverter
-];
+function buildRegistry() {
+  const registry = [
+    ImageConverter,
+    PdfConverter,
+    DocumentConverter
+  ];
+
+  // Only register if binaries are available
+  if (PandocConverter.getSupportedConversions().length > 0) {
+    registry.push(PandocConverter);
+  }
+  if (LibreOfficeConverter.getSupportedConversions().length > 0) {
+    registry.push(LibreOfficeConverter);
+  }
+
+  return registry;
+}
+
+const REGISTRY = buildRegistry();
 
 export class ConverterFactory {
   static resolve(fromExt, toExt) {
@@ -39,7 +55,7 @@ export class ConverterFactory {
     return [...new Set(REGISTRY.map(C => C.category))];
   }
 
-  static getRegistry() {
-    return REGISTRY;
+  static getEngines() {
+    return REGISTRY.map(C => C.name).filter(Boolean);
   }
 }

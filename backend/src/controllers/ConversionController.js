@@ -81,6 +81,16 @@ export class ConversionController {
     res.json({ filename, category });
   };
 
+  getEngines = async (req, res) => {
+    const { BinaryChecker } = await import('../utils/BinaryChecker.js');
+    const engines = {
+      binaries: BinaryChecker.getAvailable(),
+      registeredConverters: ConverterFactory.getEngines(),
+      supportedConversions: ConverterFactory.getAllSupported().length
+    };
+    res.json(engines);
+  };
+
   async _cleanup(...paths) {
     for (const p of paths) {
       try { await fs.unlink(p); } catch { /* ignore */ }
