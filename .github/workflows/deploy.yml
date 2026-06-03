@@ -51,27 +51,4 @@ jobs:
       - name: Build
         run: npm run build
 
-  deploy-render:
-    name: Deploy to Render
-    needs: [test-backend, test-frontend]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Check Render Hook
-        run: |
-          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
-            echo "::error::RENDER_DEPLOY_HOOK secret is not set"
-            exit 1
-          fi
-        env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-
-      - name: Trigger Render Deploy
-        run: |
-          curl -X POST "$RENDER_DEPLOY_HOOK" \
-            -H "Content-Type: application/json" \
-            --fail-with-body
-        env:
-          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-
   
