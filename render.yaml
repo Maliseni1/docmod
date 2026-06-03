@@ -3,6 +3,8 @@ services:
     name: docmod-api
     runtime: docker
     rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
@@ -10,3 +12,7 @@ services:
         value: 10000
       - key: FRONTEND_URL
         value: https://docmod.vercel.app
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 1

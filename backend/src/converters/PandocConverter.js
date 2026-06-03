@@ -22,6 +22,22 @@ export class PandocConverter extends BaseConverter {
     const fromFormat = formatMap[fromExt] || fromExt;
     const toFormat = formatMap[toExt] || toExt;
 
+    // Special case: DOCX→PDF with no LaTeX → convert to HTML first, then WeasyPrint
+    if (fromExt === 'docx' && toExt === 'pdf' && !this.#hasLatex()) {
+      if (BinaryChecker.has('weasyprint')) {
+        return this.#docxToPdfViaWeasyPrint(fromFormat);
+      }
+      throw new Error('No PDF engine available. Install texlive-xetex, weasyprint, or libreoffice.');
+    }
+
+    return this.#runPandoc(fromFormat, toFormat, toExt);
+  }
+
+  #hasLatex() {
+    return BinaryChecker.has('xelatex') || BinaryChecker.has('lualatex') || BinaryChecker.has('pdflatex');
+  }
+
+  async #runPandoc(fromFormat, toFormat, toExt) {
     return new Promise((resolve, reject) => {
       const args = [
         this.inputPath,
@@ -31,20 +47,13 @@ export class PandocConverter extends BaseConverter {
         '--resource-path', path.dirname(this.inputPath)
       ];
 
-      // Only add PDF engine if output is PDF and an engine is available
       if (toExt === 'pdf') {
         const engines = ['xelatex', 'lualatex', 'pdflatex'];
-        const availableEngine = engines.find(e => BinaryChecker.has(e));
-        if (availableEngine) {
-          args.push(`--pdf-engine=${availableEngine}`);
-        }
-        // If no engine, Pandoc will try its default or fail gracefully
+        const available = engines.find(e => BinaryChecker.has(e));
+        if (available) args.push(`--pdf-engine=${available}`);
       }
 
-      const proc = spawn('pandoc', args, { 
-        timeout: 120000 // 2 min for large docs
-      });
-
+      const proc = spawn('pandoc', args, { timeout: 120000 });
       let stderr = '';
       proc.stderr.on('data', (data) => { stderr += data.toString(); });
 
@@ -53,7 +62,6 @@ export class PandocConverter extends BaseConverter {
           try { await fs.unlink(this.outputPath); } catch {}
           return reject(new Error(`Pandoc failed (code ${code}): ${stderr || 'Unknown error'}`));
         }
-
         try {
           await fs.access(this.outputPath);
           resolve({
@@ -66,9 +74,37 @@ export class PandocConverter extends BaseConverter {
         }
       });
 
-      proc.on('error', (err) => {
-        reject(new Error(`Failed to spawn Pandoc: ${err.message}`));
+      proc.on('error', (err) => reject(new Error(`Failed to spawn Pandoc: ${err.message}`)));
+    });
+  }
+
+  async #docxToPdfViaWeasyPrint(fromFormat) {
+    // Step 1: DOCX → HTML
+    const htmlPath = this.outputPath.replace('.pdf', '.html');
+    await this.#runPandoc(fromFormat, 'html', 'html', htmlPath);
+    
+    // Step 2: HTML → PDF via WeasyPrint
+    return new Promise((resolve, reject) => {
+      const proc = spawn('weasyprint', [htmlPath, this.outputPath], { timeout: 120000 });
+      let stderr = '';
+      proc.stderr.on('data', (data) => { stderr += data.toString(); });
+
+      proc.on('close', async (code) => {
+        // Cleanup temp HTML
+        try { await fs.unlink(htmlPath); } catch {}
+        
+        if (code !== 0) {
+          try { await fs.unlink(this.outputPath); } catch {}
+          return reject(new Error(`WeasyPrint failed (code ${code}): ${stderr || 'Unknown error'}`));
+        }
+        resolve({
+          success: true,
+          outputPath: this.outputPath,
+          metadata: { type: 'document', engine: 'pandoc+weasyprint' }
+        });
       });
+
+      proc.on('error', (err) => reject(new Error(`Failed to spawn WeasyPrint: ${err.message}`)));
     });
   }
 
@@ -77,16 +113,17 @@ export class PandocConverter extends BaseConverter {
     
     const formats = ['docx', 'pdf', 'html', 'txt', 'md', 'epub', 'odt', 'rtf'];
     const conversions = [];
+    const hasLatex = BinaryChecker.has('xelatex') || BinaryChecker.has('lualatex') || BinaryChecker.has('pdflatex');
+    const hasWeasyPrint = BinaryChecker.has('weasyprint');
     
     for (const from of formats) {
       for (const to of formats) {
-        if (from !== to) {
-          // Skip DOCX→PDF if no LaTeX engine available (LibreOffice will handle it)
-          if (from === 'docx' && to === 'pdf' && !BinaryChecker.has('xelatex') && !BinaryChecker.has('lualatex') && !BinaryChecker.has('pdflatex')) {
-            continue;
-          }
-          conversions.push({ from, to });
-        }
+        if (from === to) continue;
+        
+        // DOCX→PDF needs LaTeX or WeasyPrint
+        if (from === 'docx' && to === 'pdf' && !hasLatex && !hasWeasyPrint) continue;
+        
+        conversions.push({ from, to });
       }
     }
     return conversions;

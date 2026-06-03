@@ -4,13 +4,24 @@ import path from 'path';
 import { BaseConverter } from './BaseConverter.js';
 import { BinaryChecker } from '../utils/BinaryChecker.js';
 
+const SOFFICE_PATHS = [
+  'soffice',
+  'libreoffice',
+  '/usr/bin/soffice',
+  '/usr/bin/libreoffice',
+  '/usr/lib/libreoffice/program/soffice'
+];
+
 export class LibreOfficeConverter extends BaseConverter {
+  #findBinary() {
+    for (const cmd of SOFFICE_PATHS) {
+      if (BinaryChecker.has(cmd)) return cmd;
+    }
+    return null;
+  }
+
   async convert() {
-    // Try libreoffice first, then soffice
-    let binary = null;
-    if (BinaryChecker.has('libreoffice')) binary = 'libreoffice';
-    else if (BinaryChecker.has('soffice')) binary = 'soffice';
-    
+    const binary = this.#findBinary();
     if (!binary) {
       throw new Error('LibreOffice is not installed on this server.');
     }
@@ -27,7 +38,6 @@ export class LibreOfficeConverter extends BaseConverter {
       ];
 
       const proc = spawn(binary, args, { timeout: 120000 });
-
       let stderr = '';
       proc.stderr.on('data', (data) => { stderr += data.toString(); });
 
@@ -61,8 +71,7 @@ export class LibreOfficeConverter extends BaseConverter {
   }
 
   static getSupportedConversions() {
-    // Check both possible binary names
-    const hasLo = BinaryChecker.has('libreoffice') || BinaryChecker.has('soffice');
+    const hasLo = SOFFICE_PATHS.some(p => BinaryChecker.has(p));
     if (!hasLo) return [];
     
     const froms = ['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls', 'odt', 'ods', 'odp', 'rtf'];
