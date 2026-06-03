@@ -4,15 +4,12 @@ import path from 'path';
 import { BaseConverter } from './BaseConverter.js';
 import { BinaryChecker } from '../utils/BinaryChecker.js';
 
-/**
- * GRASP: Information Expert
- * Fallback converter using LibreOffice headless mode.
- * Handles formats Pandoc struggles with (PPTX, XLSX).
- */
 export class LibreOfficeConverter extends BaseConverter {
   async convert() {
-    const binary = BinaryChecker.has('libreoffice') ? 'libreoffice' : 
-                   BinaryChecker.has('soffice') ? 'soffice' : null;
+    // Try libreoffice first, then soffice
+    let binary = null;
+    if (BinaryChecker.has('libreoffice')) binary = 'libreoffice';
+    else if (BinaryChecker.has('soffice')) binary = 'soffice';
     
     if (!binary) {
       throw new Error('LibreOffice is not installed on this server.');
@@ -39,14 +36,12 @@ export class LibreOfficeConverter extends BaseConverter {
           return reject(new Error(`LibreOffice failed (code ${code}): ${stderr || 'Unknown error'}`));
         }
 
-        // LibreOffice names output based on input name, not our target
         const inputBase = path.basename(this.inputPath, path.extname(this.inputPath));
-        const expectedLoPath = path.join(outputDir, `${inputBase}.${toExt}`);
+        const loOutput = path.join(outputDir, `${inputBase}.${toExt}`);
         
-        // Rename to our expected output path if different
-        if (expectedLoPath !== this.outputPath) {
+        if (loOutput !== this.outputPath) {
           try {
-            await fs.rename(expectedLoPath, this.outputPath);
+            await fs.rename(loOutput, this.outputPath);
           } catch (err) {
             return reject(new Error(`LibreOffice output rename failed: ${err.message}`));
           }
@@ -66,9 +61,10 @@ export class LibreOfficeConverter extends BaseConverter {
   }
 
   static getSupportedConversions() {
-    if (!BinaryChecker.has('libreoffice') && !BinaryChecker.has('soffice')) return [];
+    // Check both possible binary names
+    const hasLo = BinaryChecker.has('libreoffice') || BinaryChecker.has('soffice');
+    if (!hasLo) return [];
     
-    // LibreOffice handles these well
     const froms = ['docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls', 'odt', 'ods', 'odp', 'rtf'];
     const tos = ['pdf', 'docx', 'html', 'txt', 'odt', 'rtf'];
     const conversions = [];
