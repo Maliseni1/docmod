@@ -5,7 +5,7 @@ export default function Footer() {
     <footer className="docmod-footer">
       <div className="footer-content">
         <div className="footer-brand">
-          <img src="/src/assets/docmod.png" alt="DocMod" className="footer-logo" />
+          <img src="/docmod.png" alt="DocMod" className="footer-logo" />
           <span className="footer-brand-name">DocMod</span>
         </div>
         <div className="footer-divider" />
