@@ -1,9 +1,5 @@
 import { execSync } from 'child_process';
 
-/**
- * GRASP: Information Expert
- * Knows how to check for external binaries on the host system.
- */
 export class BinaryChecker {
   static #cache = new Map();
 
@@ -23,7 +19,11 @@ export class BinaryChecker {
   static getAvailable() {
     return {
       pandoc: this.has('pandoc'),
-      libreoffice: this.has('libreoffice') || this.has('soffice'),
+      libreoffice: this.has('libreoffice'),
+      soffice: this.has('soffice'),
+      xelatex: this.has('xelatex'),
+      lualatex: this.has('lualatex'),
+      pdflatex: this.has('pdflatex'),
       ffmpeg: this.has('ffmpeg')
     };
   }

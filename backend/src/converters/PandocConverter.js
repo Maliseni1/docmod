@@ -4,20 +4,15 @@ import path from 'path';
 import { BaseConverter } from './BaseConverter.js';
 import { BinaryChecker } from '../utils/BinaryChecker.js';
 
-/**
- * GRASP: Information Expert
- * Delegates to Pandoc CLI for document conversions.
- */
 export class PandocConverter extends BaseConverter {
   async convert() {
     if (!BinaryChecker.has('pandoc')) {
-      throw new Error('Pandoc is not installed on this server. DOCX↔PDF conversion unavailable.');
+      throw new Error('Pandoc is not installed on this server.');
     }
 
     const fromExt = path.extname(this.inputPath).slice(1).toLowerCase();
     const toExt = path.extname(this.outputPath).slice(1).toLowerCase();
 
-    // Pandoc format mapping
     const formatMap = {
       docx: 'docx', pdf: 'pdf', html: 'html', 
       txt: 'plain', md: 'markdown', epub: 'epub',
@@ -36,13 +31,18 @@ export class PandocConverter extends BaseConverter {
         '--resource-path', path.dirname(this.inputPath)
       ];
 
-      // PDF requires latex engine; pandoc handles this automatically
+      // Only add PDF engine if output is PDF and an engine is available
       if (toExt === 'pdf') {
-        args.push('--pdf-engine=xelatex');
+        const engines = ['xelatex', 'lualatex', 'pdflatex'];
+        const availableEngine = engines.find(e => BinaryChecker.has(e));
+        if (availableEngine) {
+          args.push(`--pdf-engine=${availableEngine}`);
+        }
+        // If no engine, Pandoc will try its default or fail gracefully
       }
 
       const proc = spawn('pandoc', args, { 
-        timeout: 60000 // 60s max for large documents
+        timeout: 120000 // 2 min for large docs
       });
 
       let stderr = '';
@@ -50,12 +50,10 @@ export class PandocConverter extends BaseConverter {
 
       proc.on('close', async (code) => {
         if (code !== 0) {
-          // Cleanup partial output
           try { await fs.unlink(this.outputPath); } catch {}
           return reject(new Error(`Pandoc failed (code ${code}): ${stderr || 'Unknown error'}`));
         }
 
-        // Verify output exists
         try {
           await fs.access(this.outputPath);
           resolve({
@@ -82,7 +80,13 @@ export class PandocConverter extends BaseConverter {
     
     for (const from of formats) {
       for (const to of formats) {
-        if (from !== to) conversions.push({ from, to });
+        if (from !== to) {
+          // Skip DOCX→PDF if no LaTeX engine available (LibreOffice will handle it)
+          if (from === 'docx' && to === 'pdf' && !BinaryChecker.has('xelatex') && !BinaryChecker.has('lualatex') && !BinaryChecker.has('pdflatex')) {
+            continue;
+          }
+          conversions.push({ from, to });
+        }
       }
     }
     return conversions;
