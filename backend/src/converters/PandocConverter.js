@@ -30,20 +30,20 @@ export class PandocConverter extends BaseConverter {
       throw new Error('No PDF engine available. Install texlive-xetex, weasyprint, or libreoffice.');
     }
 
-    return this.#runPandoc(fromFormat, toFormat, toExt);
+    return this.#runPandoc(fromFormat, toFormat, toExt, this.outputPath);
   }
 
   #hasLatex() {
     return BinaryChecker.has('xelatex') || BinaryChecker.has('lualatex') || BinaryChecker.has('pdflatex');
   }
 
-  async #runPandoc(fromFormat, toFormat, toExt) {
+  async #runPandoc(fromFormat, toFormat, toExt, outputPath) {
     return new Promise((resolve, reject) => {
       const args = [
         this.inputPath,
         '-f', fromFormat,
         '-t', toFormat,
-        '-o', this.outputPath,
+        '-o', outputPath,
         '--resource-path', path.dirname(this.inputPath)
       ];
 
@@ -59,14 +59,14 @@ export class PandocConverter extends BaseConverter {
 
       proc.on('close', async (code) => {
         if (code !== 0) {
-          try { await fs.unlink(this.outputPath); } catch {}
+          try { await fs.unlink(outputPath); } catch {}
           return reject(new Error(`Pandoc failed (code ${code}): ${stderr || 'Unknown error'}`));
         }
         try {
-          await fs.access(this.outputPath);
+          await fs.access(outputPath);
           resolve({
             success: true,
-            outputPath: this.outputPath,
+            outputPath,
             metadata: { type: 'document', engine: 'pandoc', from: fromFormat, to: toFormat }
           });
         } catch {
@@ -82,7 +82,7 @@ export class PandocConverter extends BaseConverter {
     // Step 1: DOCX → HTML
     const htmlPath = this.outputPath.replace('.pdf', '.html');
     await this.#runPandoc(fromFormat, 'html', 'html', htmlPath);
-    
+
     // Step 2: HTML → PDF via WeasyPrint
     return new Promise((resolve, reject) => {
       const proc = spawn('weasyprint', [htmlPath, this.outputPath], { timeout: 120000 });
