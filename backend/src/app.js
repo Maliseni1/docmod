@@ -29,6 +29,7 @@ app.use('/api', conversionRoutes);
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'docmod-api' }));
+app.get('/', (req, res) => res.json({ status: 'ok', service: 'docmod-api' }));
 
 // Global error handler
 app.use((err, req, res, next) => {

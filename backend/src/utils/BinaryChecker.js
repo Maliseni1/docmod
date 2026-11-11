@@ -1,16 +1,16 @@
 import { execSync } from 'child_process';
+import { statSync } from 'fs';
 
 export class BinaryChecker {
   static #cache = new Map();
 
   static has(command) {
     if (this.#cache.has(command)) return this.#cache.get(command);
-    
+
     // Handle absolute paths directly
     if (command.startsWith('/')) {
       try {
-        const stats = require('fs').statSync(command);
-        const exists = stats.isFile();
+        const exists = statSync(command).isFile();
         this.#cache.set(command, exists);
         return exists;
       } catch {
