@@ -14,13 +14,15 @@ export class PandocConverter extends BaseConverter {
     const toExt = path.extname(this.outputPath).slice(1).toLowerCase();
 
     const formatMap = {
-      docx: 'docx', pdf: 'pdf', html: 'html', 
-      txt: 'plain', md: 'markdown', epub: 'epub',
+      docx: 'docx', pdf: 'pdf', html: 'html',
+      md: 'markdown', epub: 'epub',
       odt: 'odt', rtf: 'rtf'
     };
 
-    const fromFormat = formatMap[fromExt] || fromExt;
-    const toFormat = formatMap[toExt] || toExt;
+    // 'txt' needs a direction-specific mapping: pandoc has a 'plain' writer
+    // but no 'plain' reader, so reading a .txt file must go through 'markdown'.
+    const fromFormat = fromExt === 'txt' ? 'markdown' : (formatMap[fromExt] || fromExt);
+    const toFormat = toExt === 'txt' ? 'plain' : (formatMap[toExt] || toExt);
 
     // Special case: DOCX→PDF with no LaTeX → convert to HTML first, then WeasyPrint
     if (fromExt === 'docx' && toExt === 'pdf' && !this.#hasLatex()) {
