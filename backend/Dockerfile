@@ -3,6 +3,9 @@ FROM node:20
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Update and install everything in one layer
+# PDF output goes through LibreOffice (soffice --headless --convert-to pdf),
+# not a LaTeX engine, so TeX Live is intentionally not installed here -
+# it added 1.5GB+ to the image for a redundant PDF path.
 RUN apt-get update && apt-get install -y \
     pandoc \
     libreoffice-writer \
@@ -11,10 +14,6 @@ RUN apt-get update && apt-get install -y \
     libreoffice-common \
     fonts-liberation \
     fonts-dejavu \
-    texlive-xetex \
-    texlive-fonts-recommended \
-    texlive-plain-generic \
-    lmodern \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean \
     && which pandoc \
