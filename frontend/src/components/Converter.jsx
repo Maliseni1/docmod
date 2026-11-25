@@ -1,7 +1,14 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadFile, getFormatsByCategory, detectCategory } from '../services/api';
+import posthog, { conversionLogger, isPostHogConfigured } from '../posthog.js';
 import { CategoryIcon, UploadCloudIcon, DownloadIcon, AlertIcon } from './icons';
+
+const captureEvent = (event, properties) => {
+  if (isPostHogConfigured) {
+    posthog.capture(event, properties);
+  }
+};
 
 const CATEGORY_LABELS = {
   image: 'Image File',
@@ -61,9 +68,12 @@ export default function Converter() {
     setCategory(detected);
 
     if (detected === 'unknown') {
+      captureEvent('unsupported_file_selected');
       setError('This file type is not supported yet. Try an image or document.');
       return;
     }
+
+    captureEvent('file_selected', { file_category: detected });
 
     try {
       const { data } = await getFormatsByCategory(detected);
@@ -74,6 +84,7 @@ export default function Converter() {
         setError(`No conversion options available for ${CATEGORY_LABELS[detected]} yet.`);
       }
     } catch (err) {
+      captureEvent('conversion_options_load_failed', { file_category: detected });
       setError('Could not load conversion options. Please try again.');
       setFormats([]);
     }
@@ -89,12 +100,36 @@ export default function Converter() {
     if (!file || !target) return;
     setLoading(true);
     setError(null);
+    captureEvent('conversion_started', {
+      file_category: category,
+      target_format: target
+    });
+    conversionLogger.info('conversion request started', {
+      file_category: category,
+      target_format: target
+    });
     try {
       const { data: blob } = await uploadFile(file, target);
       const baseName = file.name.replace(/\.[^/.]+$/, '');
       if (result?.url) URL.revokeObjectURL(result.url);
       setResult({ url: URL.createObjectURL(blob), filename: `${baseName}.${target}` });
+      captureEvent('conversion_completed', {
+        file_category: category,
+        target_format: target
+      });
+      conversionLogger.info('conversion request completed', {
+        file_category: category,
+        target_format: target
+      });
     } catch (err) {
+      captureEvent('conversion_failed', {
+        file_category: category,
+        target_format: target
+      });
+      conversionLogger.error('conversion request failed', {
+        file_category: category,
+        target_format: target
+      });
       setError(await extractErrorMessage(err));
     } finally {
       setLoading(false);
@@ -181,6 +216,10 @@ export default function Converter() {
             href={result.url}
             className="download-btn"
             download={result.filename}
+            onClick={() => captureEvent('converted_file_downloaded', {
+              file_category: category,
+              target_format: target
+            })}
           >
             <DownloadIcon /> Download {target.toUpperCase()}
           </a>
