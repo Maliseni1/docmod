@@ -1,15 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadFile, getFormatsByCategory, detectCategory } from '../services/api';
-
-const CATEGORY_ICONS = {
-  image: '🖼️',
-  document: '📄',
-  video: '🎬',
-  audio: '🎵',
-  archive: '📦',
-  unknown: '📎'
-};
+import { CategoryIcon, UploadCloudIcon, DownloadIcon, AlertIcon } from './icons';
 
 const CATEGORY_LABELS = {
   image: 'Image File',
@@ -128,7 +120,7 @@ export default function Converter() {
       <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''}`}>
         <input {...getInputProps()} />
         <div className="dropzone-icon">
-          {category ? CATEGORY_ICONS[category] : '☁️'}
+          {category ? <CategoryIcon category={category} /> : <UploadCloudIcon />}
         </div>
         <div className="dropzone-text">
           {isDragActive ? 'Drop your file here...' : 'Drag & drop a file, or click to browse'}
@@ -138,7 +130,7 @@ export default function Converter() {
         )}
         {file && (
           <div className="file-info">
-            <span>{CATEGORY_ICONS[category]}</span>
+            <CategoryIcon category={category} />
             <span>{file.name}</span>
           </div>
         )}
@@ -149,7 +141,7 @@ export default function Converter() {
           <div className="control-group">
             <label>Detected Type</label>
             <div className={`category-badge ${category}`}>
-              {CATEGORY_ICONS[category]} {CATEGORY_LABELS[category]}
+              <CategoryIcon category={category} /> {CATEGORY_LABELS[category]}
             </div>
           </div>
 
@@ -174,14 +166,14 @@ export default function Converter() {
           </button>
 
           {result && (
-            <button onClick={handleReset} style={{background: 'transparent', color: 'var(--text-secondary)', boxShadow: 'none', border: '1.5px solid var(--border)'}}>
+            <button onClick={handleReset} style={{background: 'transparent', color: 'var(--ink-muted)', boxShadow: 'none', border: '1.5px solid var(--border)'}}>
               Convert Another File
             </button>
           )}
         </div>
       )}
 
-      {error && <div className="error">⚠️ {error}</div>}
+      {error && <div className="error"><AlertIcon /> {error}</div>}
 
       {result && (
         <div className="result">
@@ -190,7 +182,7 @@ export default function Converter() {
             className="download-btn"
             download={result.filename}
           >
-            ⬇️ Download {target.toUpperCase()}
+            <DownloadIcon /> Download {target.toUpperCase()}
           </a>
         </div>
       )}
