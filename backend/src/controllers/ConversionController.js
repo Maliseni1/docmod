@@ -4,6 +4,12 @@ import { ConversionService } from '../services/ConversionService.js';
 import { ConverterFactory } from '../converters/ConverterFactory.js';
 import { FileTypeClassifier } from '../utils/FileTypeClassifier.js';
 
+// LibreOffice/Pandoc each spawn a real process; on a memory-constrained host
+// (e.g. a free-tier container), running more than one at a time risks an OOM
+// kill, so heavy conversions are capped and excess requests are told to retry.
+const MAX_CONCURRENT_HEAVY_JOBS = 1;
+let activeHeavyJobs = 0;
+
 /**
  * GRASP: Controller
  * Handles HTTP concerns only. No conversion logic here.
@@ -14,6 +20,7 @@ export class ConversionController {
   }
 
   convert = async (req, res, next) => {
+    let heavySlotTaken = false;
     try {
       if (!req.file) {
         return res.status(400).json({ error: 'No file uploaded' });
@@ -24,38 +31,32 @@ export class ConversionController {
         return res.status(400).json({ error: 'targetFormat is required' });
       }
 
-      const result = await this.service.process(req.file.path, targetFormat);
+      const fromExt = path.extname(req.file.path).slice(1).toLowerCase();
+      const ConverterClass = ConverterFactory.resolve(fromExt, targetFormat.toLowerCase());
 
-      // Schedule cleanup after 5 minutes (Render disk is ephemeral, but good practice)
-      setTimeout(() => this._cleanup(req.file.path, result.outputPath), 5 * 60 * 1000);
-
-      return res.json({
-        success: true,
-        downloadUrl: `/api/download?file=${encodeURIComponent(result.downloadFilename)}`,
-        metadata: result.metadata,
-        category: result.category
-      });
-    } catch (err) {
-      next(err);
-    }
-  };
-
-  download = async (req, res, next) => {
-    try {
-      const filename = req.query.file;
-      if (!filename) return res.status(400).json({ error: 'Missing file parameter' });
-
-      // Security: prevent path traversal
-      if (filename.includes('..') || filename.includes('/') || filename.includes('\\')) {
-        return res.status(400).json({ error: 'Invalid filename' });
+      if (ConverterClass?.isHeavy) {
+        if (activeHeavyJobs >= MAX_CONCURRENT_HEAVY_JOBS) {
+          await this._cleanup(req.file.path);
+          return res.status(503).json({ error: 'Server is busy converting another document. Please try again shortly.' });
+        }
+        activeHeavyJobs++;
+        heavySlotTaken = true;
       }
 
-      const filePath = path.resolve('./uploads', filename);
-      res.download(filePath, (err) => {
-        if (err) next(err);
+      const result = await this.service.process(req.file.path, targetFormat);
+
+      // Serverless hosts don't guarantee a shared disk between requests, so
+      // the converted file is streamed back in this same response instead of
+      // a separate /download call; both temp files are removed once sent.
+      res.download(result.outputPath, result.downloadFilename, (err) => {
+        this._cleanup(req.file.path, result.outputPath);
+        if (err && !res.headersSent) next(err);
       });
     } catch (err) {
+      await this._cleanup(req.file.path);
       next(err);
+    } finally {
+      if (heavySlotTaken) activeHeavyJobs--;
     }
   };
 

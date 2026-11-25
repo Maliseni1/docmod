@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # PDF output goes through LibreOffice (soffice --headless --convert-to pdf),
 # not a LaTeX engine, so TeX Live is intentionally not installed here -
 # it added 1.5GB+ to the image for a redundant PDF path.
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     pandoc \
     libreoffice-writer \
     libreoffice-calc \
