@@ -89,4 +89,9 @@ export class LibreOfficeConverter extends BaseConverter {
   static get category() {
     return 'document';
   }
+
+  // Spawns a real LibreOffice process - gate concurrency on low-memory hosts.
+  static get isHeavy() {
+    return true;
+  }
 }
