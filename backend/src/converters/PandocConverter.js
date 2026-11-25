@@ -134,4 +134,9 @@ export class PandocConverter extends BaseConverter {
   static get category() {
     return 'document';
   }
+
+  // Spawns a real pandoc process - gate concurrency on low-memory hosts.
+  static get isHeavy() {
+    return true;
+  }
 }

@@ -38,8 +38,7 @@ export class BinaryChecker {
       xelatex: this.has('xelatex'),
       lualatex: this.has('lualatex'),
       pdflatex: this.has('pdflatex'),
-      weasyprint: this.has('weasyprint'),
-      ffmpeg: this.has('ffmpeg')
+      weasyprint: this.has('weasyprint')
     };
   }
 }
