@@ -39,6 +39,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 DocMod API running on port ${PORT}`);
-});
+// Only bind a port when run directly (node src/app.js / Docker) - a
+// serverless host imports `app` and handles invocation itself.
+if (import.meta.url === `file://${process.argv[1]}`) {
+  app.listen(PORT, () => {
+    console.log(`🚀 DocMod API running on port ${PORT}`);
+  });
+}
+
+export default app;

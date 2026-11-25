@@ -7,11 +7,13 @@ const api = axios.create({
   headers: { 'Content-Type': 'multipart/form-data' }
 });
 
+// The server streams the converted file directly in this response (no
+// separate download step), so it's read back as a blob rather than JSON.
 export const uploadFile = (file, targetFormat) => {
   const form = new FormData();
   form.append('file', file);
   form.append('targetFormat', targetFormat);
-  return api.post('/convert', form);
+  return api.post('/convert', form, { responseType: 'blob' });
 };
 
 export const getSupportedFormats = () => api.get('/formats');

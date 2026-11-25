@@ -32,4 +32,12 @@ export class BaseConverter {
   static get category() {
     return 'unknown';
   }
+
+  /**
+   * True if convert() spawns an external process (vs. pure JS), so callers
+   * can limit how many run concurrently on memory-constrained hosts.
+   */
+  static get isHeavy() {
+    return false;
+  }
 }

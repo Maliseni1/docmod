@@ -20,6 +20,21 @@ const CATEGORY_LABELS = {
   unknown: 'File'
 };
 
+// With responseType: 'blob', axios decodes error bodies as a Blob too
+// (even though the server sent JSON), so it has to be read back out.
+async function extractErrorMessage(err) {
+  const data = err.response?.data;
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text());
+      return parsed.error || 'Conversion failed. Please try again.';
+    } catch {
+      return 'Conversion failed. Please try again.';
+    }
+  }
+  return data?.error || 'Conversion failed. Please try again.';
+}
+
 const CATEGORY_HINTS = {
   image: 'Converts between PNG, JPEG, WebP, AVIF, GIF, TIFF, BMP',
   document: 'Converts DOCX→HTML, TXT→HTML, PDF optimization',
@@ -42,7 +57,10 @@ export default function Converter() {
     if (!accepted.length) return;
     const uploaded = accepted[0];
     setFile(uploaded);
-    setResult(null);
+    setResult(prev => {
+      if (prev?.url) URL.revokeObjectURL(prev.url);
+      return null;
+    });
     setError(null);
     setFormats([]);
     setTarget('');
@@ -80,17 +98,19 @@ export default function Converter() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await uploadFile(file, target);
-      setResult(data);
+      const { data: blob } = await uploadFile(file, target);
+      const baseName = file.name.replace(/\.[^/.]+$/, '');
+      if (result?.url) URL.revokeObjectURL(result.url);
+      setResult({ url: URL.createObjectURL(blob), filename: `${baseName}.${target}` });
     } catch (err) {
-      const msg = err.response?.data?.error || 'Conversion failed. Please try again.';
-      setError(msg);
+      setError(await extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
   const handleReset = () => {
+    if (result?.url) URL.revokeObjectURL(result.url);
     setFile(null);
     setCategory(null);
     setFormats([]);
@@ -165,10 +185,10 @@ export default function Converter() {
 
       {result && (
         <div className="result">
-          <a 
-            href={`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}${result.downloadUrl}`} 
+          <a
+            href={result.url}
             className="download-btn"
-            download
+            download={result.filename}
           >
             ⬇️ Download {target.toUpperCase()}
           </a>
