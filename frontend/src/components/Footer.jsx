@@ -13,16 +13,7 @@ export default function Footer() {
           <p className="footer-made-by">Powered by</p>
           <p className="footer-company">Chiza Labs</p>
         </div>
-        <div className="footer-divider" />
-        <div className="footer-links">
-          <a href="#" className="footer-link">Privacy</a>
-          <span className="footer-dot">·</span>
-          <a href="#" className="footer-link">Terms</a>
-          <span className="footer-dot">·</span>
-          <a href="#" className="footer-link">Contact</a>
-        </div>
       </div>
-      <div className="footer-glow" />
     </footer>
   );
 }
