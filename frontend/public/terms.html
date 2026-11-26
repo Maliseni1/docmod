@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terms of Service - DocMod</title>
+<style>
+  :root {
+    --paper: #F7F4EC;
+    --surface: #FFFEFB;
+    --ink: #1C1A17;
+    --ink-muted: #6B6456;
+    --border: #E7E0D2;
+    --accent: #B9491F;
+    --accent-ink: #8F3717;
+    --accent-tint: #F3E3DA;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(28,26,23,0.06), 0 4px 12px rgba(28,26,23,0.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.65;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.5rem 5rem; }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--accent);
+    font-weight: 800;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+  }
+  .brand img { width: 24px; height: 24px; border-radius: 6px; }
+  h1 { font-size: 1.9rem; font-weight: 800; margin: 0 0 0.4rem; letter-spacing: -0.5px; }
+  .updated { color: var(--ink-muted); font-size: 0.85rem; margin-bottom: 2rem; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 2rem;
+  }
+  h2 { font-size: 1.1rem; font-weight: 800; margin: 1.75rem 0 0.6rem; }
+  h2:first-child { margin-top: 0; }
+  p, li { color: var(--ink); font-size: 0.95rem; }
+  p { margin: 0 0 0.9rem; }
+  ul { margin: 0 0 0.9rem; padding-left: 1.3rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: var(--accent); }
+  .note {
+    background: var(--accent-tint);
+    border: 1px solid rgba(185,73,31,0.2);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    font-size: 0.85rem;
+    color: var(--accent-ink);
+    margin-bottom: 2rem;
+  }
+  code {
+    background: var(--paper);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+    font-size: 0.85em;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="brand" href="/">
+      <img src="/android-chrome-192x192.png" alt="" />
+      DocMod
+    </a>
+
+    <h1>Terms of Service</h1>
+    <p class="updated">Last updated: 26 November 2026</p>
+
+    <div class="note">
+      This document describes the actual rules and technical behavior of
+      DocMod as it operates today. It's written in good faith to be clear
+      and accurate, but it isn't a substitute for advice from a qualified
+      lawyer in your jurisdiction if you need formal legal protection.
+    </div>
+
+    <div class="card">
+      <h2>1. Acceptance of these terms</h2>
+      <p>
+        DocMod is provided by Chiza Labs. By uploading a file or otherwise
+        using DocMod, you agree to these Terms of Service. If you don't
+        agree, don't use the service.
+      </p>
+
+      <h2>2. What DocMod does</h2>
+      <p>
+        DocMod is a free web-based file conversion tool. You upload a file,
+        DocMod detects its type, and converts it to a format you choose.
+        Supported conversions depend on the file type and change over time
+        as the service is developed - see the app itself for what's
+        currently available.
+      </p>
+
+      <h2>3. How your files are handled</h2>
+      <p>
+        A file you upload is sent to DocMod's conversion server, processed
+        to produce the converted output, and the result is returned to you
+        in the same request. Both the original upload and the converted
+        file are deleted from the server immediately after the response is
+        sent. DocMod does not keep a persistent copy of your files, and no
+        one at Chiza Labs reviews file content as part of normal operation.
+      </p>
+      <p>
+        Some conversions are lossy by design - most notably, converting a
+        PDF to DOCX recovers the text content only; the original layout,
+        fonts, tables, and images are not preserved. The app tells you this
+        at the point you choose that conversion, and it's restated here so
+        it's also covered by these Terms: DocMod does not guarantee any
+        particular level of fidelity for any conversion.
+      </p>
+
+      <h2>4. Your content, your rights</h2>
+      <p>
+        You retain all rights to whatever you upload. DocMod doesn't claim
+        any ownership over your files and doesn't use their content for
+        any purpose beyond performing the conversion you requested.
+      </p>
+      <p>
+        You're responsible for having the right to upload and convert
+        whatever you submit. Don't use DocMod to process content that
+        infringes someone else's copyright or other rights, or that's
+        illegal to possess or distribute where you are. If you believe
+        content processed through DocMod infringes your copyright, contact
+        <a href="mailto:maliseni@chizalabs.com">maliseni@chizalabs.com</a> -
+        though note that since files aren't stored or hosted after
+        processing, there's typically nothing left to take down by the
+        time such a report would be received.
+      </p>
+
+      <h2>5. Acceptable use and limits</h2>
+      <ul>
+        <li>Uploads are limited to 50MB per file.</li>
+        <li>Requests are rate-limited (currently 50 requests per 15 minutes per IP address) to keep the service usable for everyone.</li>
+        <li>Don't attempt to disrupt, overload, or circumvent the limits of the service, or use it to distribute malware or process content for an unlawful purpose.</li>
+      </ul>
+      <p>
+        Chiza Labs may block, rate-limit, or restrict access for any use
+        that it reasonably considers abusive, without prior notice.
+      </p>
+
+      <h2>6. No warranty</h2>
+      <p>
+        DocMod is provided free of charge, "as is" and "as available,"
+        without warranties of any kind, express or implied - including any
+        warranty of merchantability, fitness for a particular purpose, or
+        that conversions will be accurate, complete, or available without
+        interruption.
+      </p>
+
+      <h2>7. Limitation of liability</h2>
+      <p>
+        To the fullest extent permitted by law, Chiza Labs is not liable
+        for any indirect, incidental, or consequential damages arising
+        from your use of DocMod, including loss of data or the
+        consequences of a lossy or failed conversion. Since no copy of
+        your files is retained after a conversion completes, DocMod cannot
+        recover a file for you after the fact - keep your own original
+        until you've confirmed the converted result is what you need.
+      </p>
+
+      <h2>8. Changes to the service or these terms</h2>
+      <p>
+        DocMod is an evolving, free tool, and Chiza Labs may change,
+        suspend, or discontinue any part of it, or update these Terms, at
+        any time. Continued use after a change means you accept the
+        updated Terms.
+      </p>
+
+      <h2>9. Governing law</h2>
+      <p>
+        These Terms are governed by the laws of the Republic of Zambia,
+        without regard to conflict-of-law principles.
+      </p>
+
+      <h2>10. Contact</h2>
+      <p>
+        Questions about these Terms: <a href="mailto:maliseni@chizalabs.com">maliseni@chizalabs.com</a>.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
