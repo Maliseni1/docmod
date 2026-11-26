@@ -49,19 +49,6 @@ export class DocumentConverter extends BaseConverter {
       };
     }
 
-    if (fromExt === 'pdf' && toExt === 'pdf') {
-      const { PDFDocument } = await import('pdf-lib');
-      const pdfBytes = await fs.readFile(this.inputPath);
-      const pdfDoc = await PDFDocument.load(pdfBytes);
-      const compressedBytes = await pdfDoc.save({ useObjectStreams: true });
-      await fs.writeFile(this.outputPath, compressedBytes);
-      return {
-        success: true,
-        outputPath: this.outputPath,
-        metadata: { pageCount: pdfDoc.getPageCount(), type: 'document' }
-      };
-    }
-
     throw new Error(
       `Document conversion from ${fromExt} to ${toExt} is not implemented in pure JS. ` +
       `Install Pandoc or LibreOffice and extend this converter.`
@@ -72,8 +59,7 @@ export class DocumentConverter extends BaseConverter {
     return [
       { from: 'docx', to: 'html' },
       { from: 'txt', to: 'html' },
-      { from: 'html', to: 'txt' },
-      { from: 'pdf', to: 'pdf' }
+      { from: 'html', to: 'txt' }
     ];
   }
 

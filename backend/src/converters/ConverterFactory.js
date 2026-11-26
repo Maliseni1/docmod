@@ -1,6 +1,8 @@
 import { ImageConverter } from './ImageConverter.js';
 import { PdfConverter } from './PdfConverter.js';
 import { DocumentConverter } from './DocumentConverter.js';
+import { ChromiumPdfConverter } from './ChromiumPdfConverter.js';
+import { PdfToDocxConverter } from './PdfToDocxConverter.js';
 import { PandocConverter } from './PandocConverter.js';
 import { LibreOfficeConverter } from './LibreOfficeConverter.js';
 
@@ -12,7 +14,9 @@ function buildRegistry() {
   const registry = [
     ImageConverter,
     PdfConverter,
-    DocumentConverter
+    DocumentConverter,
+    ChromiumPdfConverter,
+    PdfToDocxConverter
   ];
 
   // Only register if binaries are available

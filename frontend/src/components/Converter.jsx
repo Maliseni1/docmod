@@ -1,22 +1,25 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { uploadFile, getFormatsByCategory, detectCategory } from '../services/api';
 import posthog, { conversionLogger, isPostHogConfigured } from '../posthog.js';
-import { CategoryIcon, UploadCloudIcon, DownloadIcon, AlertIcon } from './icons';
+import { CategoryIcon, UploadCloudIcon, DownloadIcon, ShareIcon, AlertIcon } from './icons';
+
+// Feature-detect once: can this browser share actual files (not just
+// text/links)? Mainly desktop Firefox lacks this - it falls back to the
+// plain download link.
+function canShareFiles() {
+  try {
+    const probe = new File([''], 'probe.txt', { type: 'text/plain' });
+    return !!(navigator.canShare && navigator.canShare({ files: [probe] }));
+  } catch {
+    return false;
+  }
+}
 
 const captureEvent = (event, properties) => {
   if (isPostHogConfigured) {
     posthog.capture(event, properties);
   }
-};
-
-const CATEGORY_LABELS = {
-  image: 'Image File',
-  document: 'Document',
-  video: 'Video',
-  audio: 'Audio',
-  archive: 'Archive',
-  unknown: 'File'
 };
 
 // With responseType: 'blob', axios decodes error bodies as a Blob too
@@ -34,9 +37,11 @@ async function extractErrorMessage(err) {
   return data?.error || 'Conversion failed. Please try again.';
 }
 
+const IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'webp', 'avif', 'gif', 'tiff', 'bmp'];
+
 const CATEGORY_HINTS = {
   image: 'Converts between PNG, JPEG, WebP, AVIF, GIF, TIFF, BMP',
-  document: 'Converts DOCX→HTML, TXT→HTML, PDF optimization',
+  document: 'Converts DOCX↔PDF, DOCX→HTML, TXT→HTML, PDF optimization',
   video: 'Coming soon — FFmpeg integration',
   audio: 'Coming soon — FFmpeg integration',
   archive: 'Coming soon — archive extraction',
@@ -51,6 +56,13 @@ export default function Converter() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [sourcePreviewUrl, setSourcePreviewUrl] = useState(null);
+  const [fileExt, setFileExt] = useState('');
+  const [shareSupported, setShareSupported] = useState(false);
+
+  useEffect(() => {
+    setShareSupported(canShareFiles());
+  }, []);
 
   const onDrop = useCallback(async (accepted) => {
     if (!accepted.length) return;
@@ -64,8 +76,19 @@ export default function Converter() {
     setFormats([]);
     setTarget('');
 
+    const ext = uploaded.name.split('.').pop().toLowerCase();
+    setFileExt(ext);
+
     const detected = detectCategory(uploaded.name);
     setCategory(detected);
+
+    setSourcePreviewUrl(prev => {
+      if (prev) URL.revokeObjectURL(prev);
+      // Images only: an <iframe>-rendered PDF preview isn't reliable across
+      // browsers - some are configured to download/open PDFs externally
+      // instead of rendering them inline, which hijacks the page.
+      return detected === 'image' ? URL.createObjectURL(uploaded) : null;
+    });
 
     if (detected === 'unknown') {
       captureEvent('unsupported_file_selected');
@@ -77,11 +100,12 @@ export default function Converter() {
 
     try {
       const { data } = await getFormatsByCategory(detected);
-      if (data.conversions && data.conversions.length > 0) {
-        setFormats(data.conversions);
-        setTarget(data.conversions[0].to);
+      const relevant = (data.conversions || []).filter(fmt => fmt.from === ext);
+      if (relevant.length > 0) {
+        setFormats(relevant);
+        setTarget(relevant[0].to);
       } else {
-        setError(`No conversion options available for ${CATEGORY_LABELS[detected]} yet.`);
+        setError(`No conversion options available for .${ext} files yet.`);
       }
     } catch (err) {
       captureEvent('conversion_options_load_failed', { file_category: detected });
@@ -112,7 +136,34 @@ export default function Converter() {
       const { data: blob } = await uploadFile(file, target);
       const baseName = file.name.replace(/\.[^/.]+$/, '');
       if (result?.url) URL.revokeObjectURL(result.url);
-      setResult({ url: URL.createObjectURL(blob), filename: `${baseName}.${target}` });
+
+      const ext = target.toLowerCase();
+      let previewType = null;
+      let previewContent = null;
+      if (IMAGE_EXTS.includes(ext)) {
+        previewType = 'image';
+      } else if (ext === 'html') {
+        previewType = 'html';
+        previewContent = await blob.text();
+      } else if (ext === 'txt') {
+        previewType = 'text';
+        previewContent = await blob.text();
+      } else {
+        // No reliable in-browser renderer for this format: PDF relies on
+        // each browser's own PDF-handling setting (some download/open it
+        // externally instead of rendering inline, which hijacks the page),
+        // and DOCX can't be rendered at all without a heavy library. Show
+        // something instead of nothing, rather than leaving a blank gap.
+        previewType = 'generic';
+      }
+
+      setResult({
+        url: URL.createObjectURL(blob),
+        blob,
+        filename: `${baseName}-docmod-${Date.now()}.${target}`,
+        previewType,
+        previewContent
+      });
       captureEvent('conversion_completed', {
         file_category: category,
         target_format: target
@@ -136,14 +187,34 @@ export default function Converter() {
     }
   };
 
+  const handleShare = async () => {
+    if (!result?.blob) return;
+    const file = new File([result.blob], result.filename, { type: result.blob.type });
+    try {
+      await navigator.share({ files: [file], title: 'DocMod' });
+      captureEvent('converted_file_shared', {
+        file_category: category,
+        target_format: target
+      });
+    } catch (err) {
+      // AbortError just means the user closed the share sheet - not an error.
+      if (err.name !== 'AbortError') {
+        setError('Could not share the file. Try downloading instead.');
+      }
+    }
+  };
+
   const handleReset = () => {
     if (result?.url) URL.revokeObjectURL(result.url);
+    if (sourcePreviewUrl) URL.revokeObjectURL(sourcePreviewUrl);
     setFile(null);
     setCategory(null);
     setFormats([]);
     setTarget('');
     setResult(null);
     setError(null);
+    setSourcePreviewUrl(null);
+    setFileExt('');
   };
 
   return (
@@ -169,6 +240,9 @@ export default function Converter() {
             <span>{file.name}</span>
           </div>
         )}
+        {sourcePreviewUrl && (
+          <img src={sourcePreviewUrl} alt="" className="source-preview" />
+        )}
       </div>
 
       {category && category !== 'unknown' && formats.length > 0 && (
@@ -176,7 +250,7 @@ export default function Converter() {
           <div className="control-group">
             <label>Detected Type</label>
             <div className={`category-badge ${category}`}>
-              <CategoryIcon category={category} /> {CATEGORY_LABELS[category]}
+              <CategoryIcon category={category} /> {fileExt}
             </div>
           </div>
 
@@ -193,6 +267,11 @@ export default function Converter() {
                 </option>
               ))}
             </select>
+            {fileExt === 'pdf' && target === 'docx' && (
+              <p className="control-note">
+                Text only — the original layout, fonts, tables, and images aren't preserved.
+              </p>
+            )}
           </div>
 
           <button onClick={handleConvert} disabled={!file || !target || loading}>
@@ -212,17 +291,44 @@ export default function Converter() {
 
       {result && (
         <div className="result">
-          <a
-            href={result.url}
-            className="download-btn"
-            download={result.filename}
-            onClick={() => captureEvent('converted_file_downloaded', {
-              file_category: category,
-              target_format: target
-            })}
-          >
-            <DownloadIcon /> Download {target.toUpperCase()}
-          </a>
+          {result.previewType === 'image' && (
+            <img src={result.url} alt="" className="result-preview-image" />
+          )}
+          {result.previewType === 'html' && (
+            <iframe
+              srcDoc={result.previewContent}
+              sandbox=""
+              title="Converted preview"
+              className="result-preview-frame"
+            />
+          )}
+          {result.previewType === 'text' && (
+            <pre className="result-preview-text">{result.previewContent}</pre>
+          )}
+          {result.previewType === 'generic' && (
+            <div className="result-preview-generic">
+              <CategoryIcon category={category} />
+              <span>{result.filename}</span>
+            </div>
+          )}
+          <div className="result-actions">
+            <a
+              href={result.url}
+              className="download-btn"
+              download={result.filename}
+              onClick={() => captureEvent('converted_file_downloaded', {
+                file_category: category,
+                target_format: target
+              })}
+            >
+              <DownloadIcon /> Download {target.toUpperCase()}
+            </a>
+            {shareSupported && (
+              <button type="button" className="share-btn" onClick={handleShare}>
+                <ShareIcon /> Share
+              </button>
+            )}
+          </div>
         </div>
       )}
 

@@ -43,8 +43,12 @@ export class ImageConverter extends BaseConverter {
         if (from !== to) conversions.push({ from, to });
       }
     }
-    // Add jpg alias
-    return [...conversions, { from: 'jpg', to: 'png' }, { from: 'jpg', to: 'webp' }, { from: 'jpg', to: 'jpeg' }];
+    // jpg is the same format as jpeg under a different extension, so it
+    // gets the same target list, minus the jpeg/jpg no-op pair.
+    for (const to of formats) {
+      if (to !== 'jpeg') conversions.push({ from: 'jpg', to });
+    }
+    return conversions;
   }
 
   static get category() {
