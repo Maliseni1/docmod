@@ -43,12 +43,22 @@ export class ConverterFactory {
   }
 
   static getAllSupported() {
-    return REGISTRY.flatMap(C => 
-      C.getSupportedConversions().map(conv => ({
-        ...conv,
-        category: C.category
-      }))
-    );
+    // Two converters can legitimately both claim the same (from, to) pair
+    // (e.g. a pure-JS converter and Pandoc/LibreOffice, when both happen
+    // to be available) - resolve() already picks the first registry match
+    // to actually run, so the listing dedupes the same way instead of
+    // showing that pair twice.
+    const seen = new Set();
+    const result = [];
+    for (const ConverterClass of REGISTRY) {
+      for (const conv of ConverterClass.getSupportedConversions()) {
+        const key = `${conv.from}->${conv.to}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result.push({ ...conv, category: ConverterClass.category });
+      }
+    }
+    return result;
   }
 
   static getSupportedByCategory(category) {
